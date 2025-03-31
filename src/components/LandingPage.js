@@ -1,120 +1,168 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import './LandingPage.css';
 
-// Import images
+// Import sample images
 import barChartImg from '../assets/bar_chart.png';
-import butterflyBarImg from '../assets/butterfly_bar.png';
-import dotBarImg from '../assets/dot_bar.png';
-import dualYBarImg from '../assets/dual_y_bar.png';
 import errorBarImg from '../assets/error_bar.png';
-import geneUpDownImg from '../assets/gene_up_down.png';
-import groupedBarImg from '../assets/grouped_bar.png';
-import horizontalBarImg from '../assets/horizontal_bar.png';
-import polarBarImg from '../assets/polar_bar.png';
-import stackedBarImg from '../assets/stacked_bar.png';
-import trendBarImg from '../assets/trend_bar.png';
-import biologicalImg from '../assets/biological.png';
+import dualYBarImg from '../assets/dual_y_bar.png';
 
 function LandingPage() {
   return (
     <div className="landing-page">
       <header className="hero">
-        <h1>BioPlot</h1>
-        <p>A powerful web application for creating customized biological data visualizations</p>
+        <div className="hero-content">
+          <h1>BioPlot</h1>
+          <p className="tagline">Advanced Biological Data Visualization</p>
+          <p className="description">
+            Create professional, publication-ready bar graphs for biological data with 
+            extensive customization options and specialized chart types.
+          </p>
+          <div className="cta-buttons">
+            <Link to="/select-graph" className="cta-button primary">
+              Get Started
+            </Link>
+            <a href="#features" className="cta-button secondary">
+              Learn More
+            </a>
+          </div>
+        </div>
       </header>
-      
-      <section className="features">
-        <div className="feature">
-          <h2>Easy to Use</h2>
-          <p>Simple interface for creating publication-quality graphs with just a few clicks</p>
-        </div>
-        <div className="feature">
-          <h2>Customizable</h2>
-          <p>Extensive options to customize every aspect of your visualizations</p>
-        </div>
-        <div className="feature">
-          <h2>Biological Focus</h2>
-          <p>Specialized graph types designed specifically for biological data</p>
-        </div>
-      </section>
-      
-      <section className="graph-types">
-        <h2>Available Graph Types</h2>
-        
-        <div className="graph-category">
-          <h3>Basic Bar Charts</h3>
-          <div className="graph-grid">
-            <Link to="/bar" className="graph-card">
-              <img src={barChartImg} alt="Basic Bar Chart" />
-              <h4>Basic Bar Chart</h4>
-            </Link>
-            <Link to="/horizontal-bar" className="graph-card">
-              <img src={horizontalBarImg} alt="Horizontal Bar Chart" />
-              <h4>Horizontal Bar Chart</h4>
-            </Link>
-            <Link to="/grouped-bar" className="graph-card">
-              <img src={groupedBarImg} alt="Grouped Bar Chart" />
-              <h4>Grouped Bar Chart</h4>
-            </Link>
-            <Link to="/stacked-bar" className="graph-card">
-              <img src={stackedBarImg} alt="Stacked Bar Chart" />
-              <h4>Stacked Bar Chart</h4>
-            </Link>
-            <Link to="/dot-bar" className="graph-card">
-              <img src={dotBarImg} alt="Dot Bar Chart" />
-              <h4>Dot Bar Chart</h4>
-            </Link>
+
+      <section id="features" className="features">
+        <h2>Powerful Visualization Tools</h2>
+        <div className="feature-grid">
+          <div className="feature-card">
+            <div className="feature-icon">
+              <i className="fas fa-chart-bar"></i>
+            </div>
+            <h3>Multiple Bar Graph Types</h3>
+            <p>
+              Choose from 10+ specialized bar graph types designed specifically for 
+              biological data visualization.
+            </p>
           </div>
-        </div>
-        
-        <div className="graph-category">
-          <h3>Specialized Bar Charts</h3>
-          <div className="graph-grid">
-            <Link to="/gene-up-down" className="graph-card">
-              <img src={geneUpDownImg} alt="Gene Up/Down Bar Chart" />
-              <h4>Gene Up/Down Bar Chart</h4>
-            </Link>
-            <Link to="/error-bar" className="graph-card">
-              <img src={errorBarImg} alt="Error Bar Chart" />
-              <h4>Error Bar Chart</h4>
-            </Link>
-            <Link to="/dual-y-bar" className="graph-card">
-              <img src={dualYBarImg} alt="Dual Y Bar Chart" />
-              <h4>Dual Y Bar Chart</h4>
-            </Link>
-            <Link to="/butterfly-bar" className="graph-card">
-              <img src={butterflyBarImg} alt="Butterfly Bar Chart" />
-              <h4>Butterfly Bar Chart</h4>
-            </Link>
-            <Link to="/vertical-bar-trend" className="graph-card">
-              <img src={trendBarImg} alt="Vertical Bar with Trend" />
-              <h4>Vertical Bar with Trend</h4>
-            </Link>
-            <Link to="/polar-bar" className="graph-card">
-              <img src={polarBarImg} alt="Polar Bar Chart" />
-              <h4>Polar Bar Chart</h4>
-            </Link>
+          
+          <div className="feature-card">
+            <div className="feature-icon">
+              <i className="fas fa-palette"></i>
+            </div>
+            <h3>Extensive Customization</h3>
+            <p>
+              Customize every aspect of your graphs including colors, fonts, 
+              borders, and grid lines.
+            </p>
           </div>
-        </div>
-        
-        <div className="graph-category">
-          <h3>Biological Visualizations</h3>
-          <div className="graph-grid biological-section">
-            <Link to="/biological" className="graph-card biological-card">
-              <img src={biologicalImg} alt="Biological Visualizations" />
-              <div className="biological-overlay">
-                <h4>Explore Biological Graph Types</h4>
-                <p>Specialized visualizations for biological data analysis</p>
-                <span className="explore-button">Explore</span>
-              </div>
-            </Link>
+          
+          <div className="feature-card">
+            <div className="feature-icon">
+              <i className="fas fa-mobile-alt"></i>
+            </div>
+            <h3>Responsive Design</h3>
+            <p>
+              Create and view your visualizations on any device with our 
+              fully responsive interface.
+            </p>
+          </div>
+          
+          <div className="feature-card">
+            <div className="feature-icon">
+              <i className="fas fa-download"></i>
+            </div>
+            <h3>Export Options</h3>
+            <p>
+              Download your graphs as high-quality images ready for 
+              publications or presentations.
+            </p>
+          </div>
+          
+          <div className="feature-card">
+            <div className="feature-icon">
+              <i className="fas fa-dna"></i>
+            </div>
+            <h3>Biological Focus</h3>
+            <p>
+              Specialized graph types for gene expression, protein analysis, 
+              and other biological data.
+            </p>
+          </div>
+          
+          <div className="feature-card">
+            <div className="feature-icon">
+              <i className="fas fa-code"></i>
+            </div>
+            <h3>No Coding Required</h3>
+            <p>
+              Create complex visualizations with our intuitive interface, 
+              no programming experience needed.
+            </p>
           </div>
         </div>
       </section>
-      
-      <footer>
-        <p>&copy; 2025 BioPlot. All rights reserved.</p>
+
+      <section className="graph-showcase">
+        <h2>Featured Graph Types</h2>
+        <div className="showcase-grid">
+          <div className="showcase-item">
+            <img src={barChartImg} alt="Basic Bar Chart" />
+            <h3>Basic Bar Chart</h3>
+            <p>Simple vertical bar chart for comparing values across categories</p>
+            <Link to="/bar-chart" className="showcase-link">Try it</Link>
+          </div>
+          
+          <div className="showcase-item">
+            <img src={errorBarImg} alt="Error Bar Chart" />
+            <h3>Error Bar Chart</h3>
+            <p>Bar chart with error bars to show data variability</p>
+            <Link to="/error-bar" className="showcase-link">Try it</Link>
+          </div>
+          
+          <div className="showcase-item">
+            <img src={dualYBarImg} alt="Dual Y-Axis Bar Chart" />
+            <h3>Dual Y-Axis Bar Chart</h3>
+            <p>Bar chart with two Y-axes for comparing different scales</p>
+            <Link to="/dual-y-bar" className="showcase-link">Try it</Link>
+          </div>
+        </div>
+        
+        <div className="view-all-container">
+          <Link to="/select-graph" className="view-all-button">
+            View All Graph Types
+          </Link>
+        </div>
+      </section>
+
+      <footer className="footer">
+        <div className="footer-content">
+          <div className="footer-logo">
+            <h2>BioPlot</h2>
+            <p>Advanced Biological Data Visualization</p>
+          </div>
+          
+          <div className="footer-links">
+            <div className="footer-column">
+              <h3>Navigation</h3>
+              <ul>
+                <li><Link to="/">Home</Link></li>
+                <li><Link to="/select-graph">Graph Types</Link></li>
+                <li><a href="#features">Features</a></li>
+              </ul>
+            </div>
+            
+            <div className="footer-column">
+              <h3>Resources</h3>
+              <ul>
+                <li><Link to="/">Documentation</Link></li>
+                <li><Link to="/">Sample Data</Link></li>
+                <li><Link to="/">Tutorials</Link></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        
+        <div className="footer-bottom">
+          <p>&copy; {new Date().getFullYear()} BioPlot. All rights reserved.</p>
+        </div>
       </footer>
     </div>
   );

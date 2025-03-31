@@ -1,6 +1,0 @@
-name left right
-geneA 9 9
-geneB 7 7
-geneC 5 5
-geneD 3 3
-geneE 1 1
