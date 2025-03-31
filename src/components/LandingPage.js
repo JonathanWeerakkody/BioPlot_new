@@ -152,9 +152,9 @@ function LandingPage() {
             <div className="footer-column">
               <h3>Resources</h3>
               <ul>
-                <li><a href="#">Documentation</a></li>
-                <li><a href="#">Sample Data</a></li>
-                <li><a href="#">Tutorials</a></li>
+                <li><Link to="/">Documentation</Link></li>
+                <li><Link to="/">Sample Data</Link></li>
+                <li><Link to="/">Tutorials</Link></li>
               </ul>
             </div>
           </div>
