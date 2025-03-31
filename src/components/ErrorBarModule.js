@@ -1,497 +1,231 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Bar } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  LineElement,
-  PointElement
-} from 'chart.js';
-import { generateChart } from '../utils/api';
+import React, { useState } from 'react';
+import DataInput from './DataInput';
 import './BarChartModule.css';
 
-// Register ChartJS components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  PointElement,
-  Title,
-  Tooltip,
-  Legend
-);
-
-function ErrorBarModule({ data, options, onOptionsChange }) {
+function ErrorBarModule() {
   const [chartData, setChartData] = useState(null);
-  const [serverImage, setServerImage] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const chartRef = useRef(null);
-  
-  // Update chart data when input data or options change
-  useEffect(() => {
-    if (data && data.categories && data.values && data.errors) {
-      // Apply sorting if enabled
-      let categories = [...data.categories];
-      let values = [...data.values];
-      let errors = [...data.errors];
-      
-      if (options.sortBars) {
-        // Create pairs and sort
-        const triplets = categories.map((category, i) => ({ 
-          category, 
-          value: values[i],
-          error: errors[i]
-        }));
-        triplets.sort((a, b) => b.value - a.value);
-        
-        // Extract sorted arrays
-        categories = triplets.map(t => t.category);
-        values = triplets.map(t => t.value);
-        errors = triplets.map(t => t.error);
-      }
-      
-      setChartData({
-        labels: categories,
-        datasets: [
-          {
-            type: 'bar',
-            label: options.dataLabel || 'Values',
-            data: values,
-            backgroundColor: options.barColor || '#4285F4',
-            borderColor: options.borderColor || 'rgba(0, 0, 0, 0.1)',
-            borderWidth: options.borderWidth || 1,
-          }
-        ],
-      });
-      
-      // Generate server-side chart
-      setIsLoading(true);
-      generateChart(categories, values, { 
-        ...options, 
-        chartType: 'errorBar',
-        errors: errors
-      })
-        .then(response => {
-          setServerImage(response.image);
-          setIsLoading(false);
-        })
-        .catch(error => {
-          console.error('Failed to generate chart from server:', error);
-          setIsLoading(false);
-        });
-    }
-  }, [data, options]);
+  const [chartOptions, setChartOptions] = useState({
+    chartType: 'errorBar',
+    title: 'Error Bar Chart',
+    xAxisLabel: 'Categories',
+    yAxisLabel: 'Values',
+    barColor: '#3366CC',
+    errorBarColor: '#FF5733',
+    gridColor: '#E0E0E0',
+    fontColor: '#333333',
+    frameColor: '#000000',
+    barWidth: 0.6,
+    errorCapWidth: 0.4,
+    errorBarWidth: 2
+  });
+  const [chartImage, setChartImage] = useState(null);
 
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: options.showLegend !== false,
-        position: options.legendPosition || 'top',
-        labels: {
-          font: {
-            size: options.legendFontSize || 12,
-            family: options.fontFamily || 'Arial',
-            color: options.fontColor || '#333333'
-          }
-        }
-      },
-      title: {
-        display: !!options.title,
-        text: options.title || '',
-        font: {
-          size: options.titleFontSize || 16,
-          family: options.fontFamily || 'Arial',
-          color: options.fontColor || '#333333'
-        }
-      },
-      tooltip: {
-        callbacks: {
-          label: function(context) {
-            const value = context.parsed.y;
-            const error = data.errors[context.dataIndex];
-            return `${context.dataset.label}: ${value} ± ${error}`;
-          }
-        }
-      }
-    },
-    scales: {
-      x: {
-        title: {
-          display: true,
-          text: options.xAxisLabel || 'Categories',
-          font: {
-            size: options.axisFontSize || 14,
-            family: options.fontFamily || 'Arial',
-            color: options.fontColor || '#333333'
-          }
-        },
-        ticks: {
-          maxRotation: options.labelRotation || 45,
-          minRotation: options.labelRotation || 45,
-          font: {
-            size: options.tickFontSize || 12,
-            family: options.fontFamily || 'Arial',
-            color: options.fontColor || '#333333'
-          }
-        },
-        grid: {
-          color: options.gridColor || 'rgba(0, 0, 0, 0.1)'
-        }
-      },
-      y: {
-        title: {
-          display: true,
-          text: options.yAxisLabel || 'Values',
-          font: {
-            size: options.axisFontSize || 14,
-            family: options.fontFamily || 'Arial',
-            color: options.fontColor || '#333333'
-          }
-        },
-        ticks: {
-          font: {
-            size: options.tickFontSize || 12,
-            family: options.fontFamily || 'Arial',
-            color: options.fontColor || '#333333'
-          }
-        },
-        grid: {
-          color: options.gridColor || 'rgba(0, 0, 0, 0.1)'
-        },
-        beginAtZero: options.beginAtZero !== false
-      }
-    }
+  const handleDataSubmit = (data) => {
+    setChartData(data);
+    generateChart(data, chartOptions);
   };
 
   const handleOptionChange = (e) => {
     const { name, value, type, checked } = e.target;
-    onOptionsChange({
-      [name]: type === 'checkbox' ? checked : value
+    setChartOptions({
+      ...chartOptions,
+      [name]: type === 'checkbox' ? checked : value,
     });
-  };
 
-  const downloadChart = () => {
-    // If we have a server-generated image, download that
-    if (serverImage) {
-      const link = document.createElement('a');
-      link.download = 'bioplot-errorbar-chart.png';
-      link.href = serverImage;
-      link.click();
-    } 
-    // Fallback to client-side chart
-    else if (chartRef.current) {
-      const url = chartRef.current.toBase64Image();
-      const link = document.createElement('a');
-      link.download = 'bioplot-errorbar-chart.png';
-      link.href = url;
-      link.click();
+    if (chartData) {
+      generateChart(chartData, {
+        ...chartOptions,
+        [name]: type === 'checkbox' ? checked : value,
+      });
     }
   };
 
-  const loadSampleData = () => {
-    const sampleCategories = ['Group A', 'Group B', 'Group C', 'Group D', 'Group E'];
-    const sampleValues = [4.2, 3.8, 5.1, 2.9, 3.4];
-    const sampleErrors = [0.5, 0.4, 0.6, 0.3, 0.5];
-    
-    onOptionsChange({
-      title: 'Sample Error Bar Chart',
-      xAxisLabel: 'Groups',
-      yAxisLabel: 'Values with Error',
-      barColor: '#4285F4',
-      errorBarColor: '#FF0000',
-      errorBarWidth: 2,
-      capWidth: 10
-    });
-    
-    return { 
-      categories: sampleCategories, 
-      values: sampleValues,
-      errors: sampleErrors
-    };
+  const generateChart = async (data, options) => {
+    try {
+      const response = await fetch('/api/generate-chart', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          categories: data.categories,
+          values: data.values,
+          errors: data.errors,
+          options: options,
+        }),
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        setChartImage(result.image);
+      } else {
+        console.error('Error generating chart:', result.error);
+      }
+    } catch (error) {
+      console.error('Error generating chart:', error);
+    }
   };
 
   return (
     <div className="bar-chart-module">
-      <div className="two-column">
-        <div className="column chart-options">
-          <h3>Chart Options</h3>
-          
-          <div className="form-group">
-            <label htmlFor="title">Chart Title</label>
-            <input
-              type="text"
-              id="title"
-              name="title"
-              value={options.title || ''}
-              onChange={handleOptionChange}
-              placeholder="Enter chart title"
-            />
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="xAxisLabel">X-Axis Label</label>
-            <input
-              type="text"
-              id="xAxisLabel"
-              name="xAxisLabel"
-              value={options.xAxisLabel || ''}
-              onChange={handleOptionChange}
-              placeholder="X-Axis Label"
-            />
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="yAxisLabel">Y-Axis Label</label>
-            <input
-              type="text"
-              id="yAxisLabel"
-              name="yAxisLabel"
-              value={options.yAxisLabel || ''}
-              onChange={handleOptionChange}
-              placeholder="Y-Axis Label"
-            />
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="dataLabel">Data Label</label>
-            <input
-              type="text"
-              id="dataLabel"
-              name="dataLabel"
-              value={options.dataLabel || ''}
-              onChange={handleOptionChange}
-              placeholder="Data Label"
-            />
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="barColor">Bar Color</label>
-            <input
-              type="color"
-              id="barColor"
-              name="barColor"
-              value={options.barColor || '#4285F4'}
-              onChange={handleOptionChange}
-            />
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="errorBarColor">Error Bar Color</label>
-            <input
-              type="color"
-              id="errorBarColor"
-              name="errorBarColor"
-              value={options.errorBarColor || '#FF0000'}
-              onChange={handleOptionChange}
-            />
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="errorBarWidth">Error Bar Width</label>
-            <input
-              type="number"
-              id="errorBarWidth"
-              name="errorBarWidth"
-              value={options.errorBarWidth || 2}
-              onChange={handleOptionChange}
-              min="1"
-              max="10"
-            />
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="capWidth">Cap Width</label>
-            <input
-              type="number"
-              id="capWidth"
-              name="capWidth"
-              value={options.capWidth || 10}
-              onChange={handleOptionChange}
-              min="0"
-              max="20"
-            />
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="borderColor">Border Color</label>
-            <input
-              type="color"
-              id="borderColor"
-              name="borderColor"
-              value={options.borderColor || '#000000'}
-              onChange={handleOptionChange}
-            />
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="gridColor">Grid Color</label>
-            <input
-              type="color"
-              id="gridColor"
-              name="gridColor"
-              value={options.gridColor || '#CCCCCC'}
-              onChange={handleOptionChange}
-            />
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="fontColor">Font Color</label>
-            <input
-              type="color"
-              id="fontColor"
-              name="fontColor"
-              value={options.fontColor || '#333333'}
-              onChange={handleOptionChange}
-            />
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="fontFamily">Font Family</label>
-            <select
-              id="fontFamily"
-              name="fontFamily"
-              value={options.fontFamily || 'Arial'}
-              onChange={handleOptionChange}
-            >
-              <option value="Arial">Arial</option>
-              <option value="Helvetica">Helvetica</option>
-              <option value="Times New Roman">Times New Roman</option>
-              <option value="Courier New">Courier New</option>
-              <option value="Verdana">Verdana</option>
-              <option value="Georgia">Georgia</option>
-            </select>
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="titleFontSize">Title Font Size</label>
-            <input
-              type="number"
-              id="titleFontSize"
-              name="titleFontSize"
-              value={options.titleFontSize || 16}
-              onChange={handleOptionChange}
-              min="10"
-              max="30"
-            />
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="axisFontSize">Axis Label Font Size</label>
-            <input
-              type="number"
-              id="axisFontSize"
-              name="axisFontSize"
-              value={options.axisFontSize || 14}
-              onChange={handleOptionChange}
-              min="8"
-              max="24"
-            />
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="tickFontSize">Tick Label Font Size</label>
-            <input
-              type="number"
-              id="tickFontSize"
-              name="tickFontSize"
-              value={options.tickFontSize || 12}
-              onChange={handleOptionChange}
-              min="8"
-              max="20"
-            />
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="labelRotation">Label Rotation (degrees)</label>
-            <input
-              type="number"
-              id="labelRotation"
-              name="labelRotation"
-              value={options.labelRotation || 45}
-              onChange={handleOptionChange}
-              min="0"
-              max="90"
-            />
-          </div>
-          
-          <div className="form-group checkbox">
-            <label>
-              <input
-                type="checkbox"
-                name="sortBars"
-                checked={options.sortBars || false}
-                onChange={handleOptionChange}
-              />
-              Sort Bars by Value (Descending)
-            </label>
-          </div>
-          
-          <div className="form-group checkbox">
-            <label>
-              <input
-                type="checkbox"
-                name="beginAtZero"
-                checked={options.beginAtZero !== false}
-                onChange={handleOptionChange}
-              />
-              Begin Y-Axis at Zero
-            </label>
-          </div>
-          
-          <div className="form-group checkbox">
-            <label>
-              <input
-                type="checkbox"
-                name="showLegend"
-                checked={options.showLegend !== false}
-                onChange={handleOptionChange}
-              />
-              Show Legend
-            </label>
-          </div>
-          
-          <div className="form-group">
-            <button onClick={downloadChart} className="download-button">
-              Download Chart
-            </button>
-          </div>
-          
-          {!data && (
-            <div className="form-group">
-              <button 
-                onClick={() => onOptionsChange({ sampleData: loadSampleData() })} 
-                className="sample-button"
-              >
-                Load Sample Data
-              </button>
-            </div>
-          )}
+      <div className="module-header">
+        <h2>Error Bar Chart</h2>
+        <p>Create a bar chart with error bars to show data variability</p>
+      </div>
+
+      <div className="module-content">
+        <div className="input-section">
+          <DataInput onDataSubmit={handleDataSubmit} graphType="errorBar" />
         </div>
-        
-        <div className="column chart-preview">
-          <h3>Preview</h3>
-          <div className="chart-container">
-            {isLoading ? (
-              <div className="loading">Generating chart...</div>
-            ) : serverImage ? (
-              <div className="server-image">
-                <img src={serverImage} alt="Generated chart" />
-              </div>
-            ) : chartData ? (
-              <Bar 
-                data={chartData} 
-                options={chartOptions} 
-                ref={chartRef}
+
+        <div className="options-section">
+          <h3>Chart Options</h3>
+          <div className="options-grid">
+            <div className="option-group">
+              <label htmlFor="title">Chart Title</label>
+              <input
+                type="text"
+                id="title"
+                name="title"
+                value={chartOptions.title}
+                onChange={handleOptionChange}
               />
+            </div>
+
+            <div className="option-group">
+              <label htmlFor="xAxisLabel">X-Axis Label</label>
+              <input
+                type="text"
+                id="xAxisLabel"
+                name="xAxisLabel"
+                value={chartOptions.xAxisLabel}
+                onChange={handleOptionChange}
+              />
+            </div>
+
+            <div className="option-group">
+              <label htmlFor="yAxisLabel">Y-Axis Label</label>
+              <input
+                type="text"
+                id="yAxisLabel"
+                name="yAxisLabel"
+                value={chartOptions.yAxisLabel}
+                onChange={handleOptionChange}
+              />
+            </div>
+
+            <div className="option-group">
+              <label htmlFor="barColor">Bar Color</label>
+              <input
+                type="color"
+                id="barColor"
+                name="barColor"
+                value={chartOptions.barColor}
+                onChange={handleOptionChange}
+              />
+            </div>
+
+            <div className="option-group">
+              <label htmlFor="errorBarColor">Error Bar Color</label>
+              <input
+                type="color"
+                id="errorBarColor"
+                name="errorBarColor"
+                value={chartOptions.errorBarColor}
+                onChange={handleOptionChange}
+              />
+            </div>
+
+            <div className="option-group">
+              <label htmlFor="gridColor">Grid Color</label>
+              <input
+                type="color"
+                id="gridColor"
+                name="gridColor"
+                value={chartOptions.gridColor}
+                onChange={handleOptionChange}
+              />
+            </div>
+
+            <div className="option-group">
+              <label htmlFor="fontColor">Font Color</label>
+              <input
+                type="color"
+                id="fontColor"
+                name="fontColor"
+                value={chartOptions.fontColor}
+                onChange={handleOptionChange}
+              />
+            </div>
+
+            <div className="option-group">
+              <label htmlFor="frameColor">Frame Color</label>
+              <input
+                type="color"
+                id="frameColor"
+                name="frameColor"
+                value={chartOptions.frameColor}
+                onChange={handleOptionChange}
+              />
+            </div>
+
+            <div className="option-group">
+              <label htmlFor="barWidth">Bar Width</label>
+              <input
+                type="range"
+                id="barWidth"
+                name="barWidth"
+                min="0.1"
+                max="1"
+                step="0.1"
+                value={chartOptions.barWidth}
+                onChange={handleOptionChange}
+              />
+              <span>{chartOptions.barWidth}</span>
+            </div>
+
+            <div className="option-group">
+              <label htmlFor="errorCapWidth">Error Cap Width</label>
+              <input
+                type="range"
+                id="errorCapWidth"
+                name="errorCapWidth"
+                min="0.1"
+                max="1"
+                step="0.1"
+                value={chartOptions.errorCapWidth}
+                onChange={handleOptionChange}
+              />
+              <span>{chartOptions.errorCapWidth}</span>
+            </div>
+
+            <div className="option-group">
+              <label htmlFor="errorBarWidth">Error Bar Width</label>
+              <input
+                type="range"
+                id="errorBarWidth"
+                name="errorBarWidth"
+                min="1"
+                max="5"
+                step="0.5"
+                value={chartOptions.errorBarWidth}
+                onChange={handleOptionChange}
+              />
+              <span>{chartOptions.errorBarWidth}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="preview-section">
+          <h3>Chart Preview</h3>
+          <div className="chart-preview">
+            {chartImage ? (
+              <img src={chartImage} alt="Error Bar Chart" />
             ) : (
-              <div className="no-data">No data to display</div>
+              <div className="no-preview">
+                <p>Enter data and click "Generate Graph" to see the preview</p>
+                <p>Format: First row - categories, Second row - values, Third row - error values</p>
+              </div>
             )}
           </div>
         </div>
