@@ -1,97 +1,203 @@
-.data-input-container {
-  background-color: #f8f9fa;
+.data-input {
+  background-color: white;
   border-radius: 8px;
   padding: 20px;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.data-input h3 {
+  margin-top: 0;
   margin-bottom: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  color: #2c3e50;
+  font-weight: 500;
 }
 
-.data-input-header {
+.input-type-selector {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  margin-bottom: 20px;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.input-type-selector button {
+  flex: 1;
+  padding: 10px 15px;
+  background-color: #f5f5f5;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.input-type-selector button.active {
+  background-color: #3498db;
+  color: white;
+}
+
+.input-type-selector button:hover:not(.active) {
+  background-color: #e0e0e0;
+}
+
+.form-group {
   margin-bottom: 15px;
 }
 
-.data-input-header h3 {
-  margin: 0;
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
   color: #333;
-  font-size: 1.2rem;
 }
 
-.sample-data-button {
-  background-color: #6c757d;
+.form-group input[type="text"],
+.form-group textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.form-group input[type="text"]:focus,
+.form-group textarea:focus {
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+  outline: none;
+}
+
+.form-group small {
+  display: block;
+  margin-top: 5px;
+  color: #7f8c8d;
+  font-size: 12px;
+}
+
+.datasets {
+  margin-bottom: 15px;
+}
+
+.dataset-row {
+  display: flex;
+  margin-bottom: 10px;
+  align-items: center;
+}
+
+.dataset-label {
+  width: 30%;
+  padding-right: 10px;
+}
+
+.dataset-values {
+  flex: 1;
+}
+
+.remove-dataset {
+  background-color: #e74c3c;
   color: white;
   border: none;
-  border-radius: 4px;
-  padding: 8px 12px;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  font-size: 0.9rem;
+  margin-left: 10px;
+  font-size: 16px;
   transition: background-color 0.3s;
 }
 
-.sample-data-button:hover {
-  background-color: #5a6268;
+.remove-dataset:hover {
+  background-color: #c0392b;
 }
 
-.data-input-instructions {
-  background-color: #e9ecef;
-  border-left: 4px solid #007bff;
-  padding: 10px 15px;
-  margin-bottom: 15px;
-  border-radius: 0 4px 4px 0;
-  font-size: 0.9rem;
+.remove-dataset:disabled {
+  background-color: #bdc3c7;
+  cursor: not-allowed;
 }
 
-.data-input-instructions ul {
-  margin: 5px 0;
-  padding-left: 20px;
-}
-
-.data-input-textarea {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #ced4da;
+.add-dataset {
+  background-color: #2ecc71;
+  color: white;
+  border: none;
   border-radius: 4px;
-  font-family: monospace;
-  font-size: 0.9rem;
-  resize: vertical;
-  margin-bottom: 15px;
+  padding: 8px 15px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s;
 }
 
-.data-input-error {
-  color: #dc3545;
-  margin-bottom: 15px;
-  font-size: 0.9rem;
-  padding: 8px;
+.add-dataset:hover {
+  background-color: #27ae60;
+}
+
+.error-message {
   background-color: #f8d7da;
-  border-radius: 4px;
-  border: 1px solid #f5c6cb;
-}
-
-.data-input-submit {
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
+  color: #721c24;
   padding: 10px 15px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+  font-size: 14px;
+}
+
+.data-format-help {
+  margin-top: 20px;
+  border-top: 1px solid #eee;
+  padding-top: 15px;
+}
+
+.data-format-help summary {
   cursor: pointer;
-  font-size: 1rem;
-  transition: background-color 0.3s;
-  width: 100%;
+  color: #3498db;
+  font-weight: 500;
+  outline: none;
 }
 
-.data-input-submit:hover {
-  background-color: #0069d9;
+.help-content {
+  margin-top: 10px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  font-size: 14px;
 }
 
+.help-content h4 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: #2c3e50;
+}
+
+.help-content pre {
+  background-color: #f1f1f1;
+  padding: 10px;
+  border-radius: 4px;
+  overflow-x: auto;
+  font-size: 12px;
+}
+
+/* Responsive styles */
 @media (max-width: 768px) {
-  .data-input-header {
+  .input-type-selector {
     flex-direction: column;
-    align-items: flex-start;
   }
   
-  .sample-data-button {
-    margin-top: 10px;
+  .dataset-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .dataset-label {
+    width: 100%;
+    padding-right: 0;
+    margin-bottom: 5px;
+  }
+  
+  .remove-dataset {
+    align-self: flex-end;
+    margin-top: 5px;
   }
 }
