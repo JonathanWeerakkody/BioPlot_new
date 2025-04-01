@@ -1,3 +1,8 @@
+matplotlib==3.7.2
+numpy==1.24.3
+pandas==1.5.3
 Flask==2.0.3
 Flask-Cors==3.0.10
 gunicorn==20.1.0
+setuptools==59.6.0
+distlib==0.3.6

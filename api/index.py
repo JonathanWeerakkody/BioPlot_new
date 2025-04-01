@@ -10,6 +10,14 @@ import subprocess
 app = Flask(__name__)
 CORS(app)
 
+# Create a .vercel/distutils directory and add an empty __init__.py file
+os.makedirs('.vercel/distutils', exist_ok=True)
+with open('.vercel/distutils/__init__.py', 'w') as f:
+    f.write('# Empty init file for distutils\n')
+
+# Add .vercel to Python path
+sys.path.insert(0, '.vercel')
+
 # Function to install packages if they're not available
 def ensure_packages():
     try:
@@ -343,7 +351,7 @@ def plot():
 
 @app.route('/', methods=['GET'])
 def health_check():
-    return jsonify({"status": "API is running"})
+    return jsonify({"status": "API is running", "distutils_path": os.path.exists('.vercel/distutils/__init__.py')})
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
