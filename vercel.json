@@ -1,15 +1,9 @@
 {
-  "env": {
-    "SETUPTOOLS_USE_DISTUTILS": "local"
-  },
   "version": 2,
   "builds": [
     {
       "src": "api/index.py",
-      "use": "@vercel/python",
-      "config": {
-        "pythonVersion": "3.12"
-      }
+      "use": "@vercel/python"
     },
     {
       "src": "package.json",
