@@ -5,48 +5,14 @@ import base64
 import json
 import os
 import sys
-import subprocess
 
 app = Flask(__name__)
 CORS(app)
 
-# Create a .vercel/distutils directory and add an empty __init__.py file
-os.makedirs('.vercel/distutils', exist_ok=True)
-with open('.vercel/distutils/__init__.py', 'w') as f:
-    f.write('# Empty init file for distutils\n')
-
-# Add .vercel to Python path
-sys.path.insert(0, '.vercel')
-
-# Function to install packages if they're not available
-def ensure_packages():
-    try:
-        # Try importing required packages
-        import matplotlib
-        import numpy
-        import pandas
-        import scipy
-        import seaborn
-        print("All required packages are already installed")
-    except ImportError as e:
-        print(f"Installing missing packages: {str(e)}")
-        # Install packages if they're not available
-        subprocess.check_call([sys.executable, "-m", "pip", "install", 
-                              "matplotlib==3.7.2", 
-                              "numpy==1.24.3", 
-                              "pandas==1.5.3",
-                              "scipy==1.10.1", 
-                              "scikit-learn==1.2.2", 
-                              "seaborn==0.12.2"])
-        print("Packages installed successfully")
-
 @app.route('/api/cluster_heatmap', methods=['POST'])
 def cluster_heatmap():
     try:
-        # Ensure all required packages are installed
-        ensure_packages()
-        
-        # Now import the packages after ensuring they're installed
+        # Import packages compatible with Python 3.12
         import matplotlib
         matplotlib.use('Agg')
         import matplotlib.pyplot as plt
@@ -55,6 +21,7 @@ def cluster_heatmap():
         import matplotlib.gridspec as gridspec
         from scipy.cluster.hierarchy import linkage, dendrogram
         from scipy.spatial.distance import pdist
+        import seaborn as sns
         
         # Get data and options from request
         data = request.json.get('data', '')
@@ -96,46 +63,8 @@ def cluster_heatmap():
         width = options.get('width', 800) / 100
         height = options.get('height', 600) / 100
         
-        # Create figure with GridSpec for layout
-        fig = plt.figure(figsize=(width, height))
-        
-        # Define margins
-        margin_top = options.get('marginTop', 50) / 100
-        margin_right = options.get('marginRight', 50) / 100
-        margin_bottom = options.get('marginBottom', 100) / 100
-        margin_left = options.get('marginLeft', 100) / 100
-        
-        # Adjust figure margins
-        fig.subplots_adjust(
-            top=1 - margin_top/height,
-            right=1 - margin_right/width,
-            bottom=margin_bottom/height,
-            left=margin_left/width
-        )
-        
-        # Set up GridSpec for layout
-        show_dendrograms = options.get('showDendrograms', True)
-        
-        if show_dendrograms:
-            # Create grid with space for dendrograms
-            gs = gridspec.GridSpec(2, 2, width_ratios=[0.15, 0.85], height_ratios=[0.15, 0.85])
-            
-            # Dendrogram for columns (samples)
-            ax_col_dendrogram = fig.add_subplot(gs[0, 1])
-            
-            # Dendrogram for rows (genes)
-            ax_row_dendrogram = fig.add_subplot(gs[1, 0])
-            
-            # Main heatmap
-            ax_heatmap = fig.add_subplot(gs[1, 1])
-            
-            # Empty subplot for top-left corner
-            ax_empty = fig.add_subplot(gs[0, 0])
-            ax_empty.axis('off')
-        else:
-            # Just the heatmap without dendrograms
-            gs = gridspec.GridSpec(1, 1)
-            ax_heatmap = fig.add_subplot(gs[0, 0])
+        # Get color scheme
+        color_scheme = options.get('colorScheme', 'viridis')
         
         # Set distance metric
         distance_metric = options.get('distanceMetric', 'euclidean')
@@ -143,74 +72,32 @@ def cluster_heatmap():
         # Set linkage method
         linkage_method = options.get('linkageMethod', 'complete')
         
-        # Compute linkage for rows (genes)
-        row_linkage = linkage(
-            pdist(df.values, metric=distance_metric),
-            method=linkage_method
+        # Use seaborn's clustermap for a more modern implementation
+        # This handles the clustering and visualization in one step
+        g = sns.clustermap(
+            df,
+            figsize=(width, height),
+            cmap=color_scheme,
+            method=linkage_method,
+            metric=distance_metric,
+            xticklabels=True,
+            yticklabels=True,
+            dendrogram_ratio=(0.15, 0.15),
+            cbar_pos=(0.02, 0.8, 0.05, 0.18),
+            row_cluster=options.get('showDendrograms', True),
+            col_cluster=options.get('showDendrograms', True)
         )
-        
-        # Compute linkage for columns (samples)
-        col_linkage = linkage(
-            pdist(df.values.T, metric=distance_metric),
-            method=linkage_method
-        )
-        
-        # Get color scheme
-        color_scheme = options.get('colorScheme', 'viridis')
-        
-        # Create color map
-        if color_scheme in plt.colormaps():
-            cmap = plt.get_cmap(color_scheme)
-        else:
-            # Default to viridis if specified colormap doesn't exist
-            cmap = plt.get_cmap('viridis')
         
         # Set font size
         font_size = options.get('fontSize', 12)
         plt.rcParams.update({'font.size': font_size})
         
-        if show_dendrograms:
-            # Plot dendrograms
-            row_dendrogram = dendrogram(
-                row_linkage,
-                orientation='left',
-                ax=ax_row_dendrogram,
-                no_labels=True
-            )
-            
-            col_dendrogram = dendrogram(
-                col_linkage,
-                ax=ax_col_dendrogram,
-                no_labels=True
-            )
-            
-            # Get the reordering indices from dendrograms
-            row_idx = row_dendrogram['leaves']
-            col_idx = col_dendrogram['leaves']
-            
-            # Reorder data according to clustering
-            df_clustered = df.iloc[row_idx, col_idx]
-            
-            # Hide axes for dendrograms
-            ax_row_dendrogram.axis('off')
-            ax_col_dendrogram.axis('off')
-        else:
-            # Without dendrograms, use original data order
-            df_clustered = df
+        # Rotate x-axis labels
+        plt.setp(g.ax_heatmap.get_xticklabels(), rotation=45, ha='right')
         
-        # Plot heatmap
-        im = ax_heatmap.imshow(df_clustered, aspect='auto', cmap=cmap)
-        
-        # Add colorbar
-        cbar = plt.colorbar(im, ax=ax_heatmap, shrink=0.8)
-        cbar.set_label('Expression Value')
-        
-        # Set tick labels
-        ax_heatmap.set_xticks(np.arange(len(df_clustered.columns)))
-        ax_heatmap.set_yticks(np.arange(len(df_clustered.index)))
-        
-        ax_heatmap.set_xticklabels(df_clustered.columns, rotation=45, ha='right')
-        ax_heatmap.set_yticklabels(df_clustered.index)
+        # Set title and labels
+        g.fig.suptitle(options.get('title', 'Cluster Heatmap'), fontsize=font_size + 4)
+        g.fig.text(0.5, 0.01, options.get('subtitle', 'Gene Expression Data'), ha='center', fontsize=font_size + 2)
         
         # Add group annotations if requested
         if options.get('showGroupAnnotations', True):
@@ -219,12 +106,9 @@ def cluster_heatmap():
             group_colors = plt.cm.tab10(np.linspace(0, 1, len(unique_groups)))
             group_color_map = {group: color for group, color in zip(unique_groups, group_colors)}
             
-            # Add a color bar for groups above the heatmap
-            group_bar_height = 0.05
-            
             # Get the ordered sample names after clustering
-            if show_dendrograms:
-                ordered_samples = df_clustered.columns
+            if options.get('showDendrograms', True):
+                ordered_samples = [df.columns[i] for i in g.dendrogram_col.reordered_ind]
             else:
                 ordered_samples = df.columns
             
@@ -235,11 +119,11 @@ def cluster_heatmap():
             group_colors_array = group_colors_array.reshape(1, -1, 4)
             
             # Create a new axis for the group bar
-            ax_group = fig.add_axes([
-                ax_heatmap.get_position().x0,
-                ax_heatmap.get_position().y1 + 0.01,
-                ax_heatmap.get_position().width,
-                group_bar_height
+            ax_group = g.fig.add_axes([
+                g.ax_heatmap.get_position().x0,
+                g.ax_heatmap.get_position().y1 + 0.01,
+                g.ax_heatmap.get_position().width,
+                0.05
             ])
             
             # Plot the group bar
@@ -250,13 +134,6 @@ def cluster_heatmap():
             # Add a legend for groups
             handles = [plt.Rectangle((0, 0), 1, 1, color=group_color_map[group]) for group in unique_groups]
             ax_group.legend(handles, unique_groups, loc='upper right', title='Group', bbox_to_anchor=(1.15, 1))
-        
-        # Set title and labels
-        plt.suptitle(options.get('title', 'Cluster Heatmap'), fontsize=font_size + 4)
-        fig.text(0.5, 0.01, options.get('subtitle', 'Gene Expression Data'), ha='center', fontsize=font_size + 2)
-        
-        ax_heatmap.set_xlabel(options.get('xAxisLabel', 'Samples'))
-        ax_heatmap.set_ylabel(options.get('yAxisLabel', 'Genes'))
         
         # Adjust layout
         plt.tight_layout(rect=[0, 0.03, 1, 0.95])
@@ -269,7 +146,7 @@ def cluster_heatmap():
         # Encode the image to base64
         plot_data = base64.b64encode(buf.getvalue()).decode('utf-8')
         
-        plt.close(fig)
+        plt.close()
         
         return jsonify({
             'plot': plot_data,
@@ -282,10 +159,7 @@ def cluster_heatmap():
 @app.route('/api/plot', methods=['POST'])
 def plot():
     try:
-        # Ensure all required packages are installed
-        ensure_packages()
-        
-        # Now import the packages after ensuring they're installed
+        # Import packages compatible with Python 3.12
         import matplotlib
         matplotlib.use('Agg')
         import matplotlib.pyplot as plt
@@ -351,7 +225,7 @@ def plot():
 
 @app.route('/', methods=['GET'])
 def health_check():
-    return jsonify({"status": "API is running", "distutils_path": os.path.exists('.vercel/distutils/__init__.py')})
+    return jsonify({"status": "API is running", "python_version": sys.version})
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
