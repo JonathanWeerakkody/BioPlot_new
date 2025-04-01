@@ -5,30 +5,16 @@ import base64
 import json
 import os
 import sys
+import subprocess
 
 app = Flask(__name__)
 CORS(app)
 
-@app.route('/api/cluster_heatmap', methods=['POST'])
-def cluster_heatmap():
+def generate_simple_heatmap(data_str, options):
+    """Generate a simple heatmap without external dependencies."""
     try:
-        # Import packages compatible with Python 3.12
-        import matplotlib
-        matplotlib.use('Agg')
-        import matplotlib.pyplot as plt
-        import numpy as np
-        import pandas as pd
-        import matplotlib.gridspec as gridspec
-        from scipy.cluster.hierarchy import linkage, dendrogram
-        from scipy.spatial.distance import pdist
-        import seaborn as sns
-        
-        # Get data and options from request
-        data = request.json.get('data', '')
-        options = request.json.get('options', {})
-        
         # Parse data
-        lines = data.strip().split('\n')
+        lines = data_str.strip().split('\n')
         
         # Extract group and sample names
         group_line = lines[0].split('\t')
@@ -42,116 +28,163 @@ def cluster_heatmap():
             gene_names.append(row[0])
             data_rows.append([float(x) for x in row[1:]])
         
-        # Create DataFrame
-        df = pd.DataFrame(data_rows, index=gene_names, columns=sample_line[1:])
+        # Create HTML for a heatmap using CSS grid
+        html = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                .heatmap-container {
+                    display: grid;
+                    grid-template-columns: auto repeat(COLUMN_COUNT, 1fr);
+                    grid-gap: 1px;
+                    background-color: #f5f5f5;
+                    padding: 10px;
+                    font-family: Arial, sans-serif;
+                }
+                .heatmap-header {
+                    font-weight: bold;
+                    text-align: center;
+                    padding: 5px;
+                    background-color: #e0e0e0;
+                }
+                .heatmap-row-label {
+                    font-weight: bold;
+                    padding: 5px;
+                    background-color: #e0e0e0;
+                }
+                .heatmap-cell {
+                    width: 30px;
+                    height: 30px;
+                    text-align: center;
+                    color: white;
+                    font-size: 10px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .heatmap-title {
+                    font-size: 18px;
+                    font-weight: bold;
+                    text-align: center;
+                    margin-bottom: 10px;
+                }
+                .heatmap-subtitle {
+                    font-size: 14px;
+                    text-align: center;
+                    margin-bottom: 20px;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="heatmap-title">TITLE</div>
+            <div class="heatmap-subtitle">SUBTITLE</div>
+            <div class="heatmap-container">
+                <!-- Headers and cells will be inserted here -->
+                GRID_CONTENT
+            </div>
+        </body>
+        </html>
+        """
         
-        # Create group mapping
-        groups = {}
-        for i in range(1, len(group_line)):
-            groups[sample_line[i]] = group_line[i]
+        # Replace placeholders
+        html = html.replace("TITLE", options.get('title', 'Cluster Heatmap'))
+        html = html.replace("SUBTITLE", options.get('subtitle', 'Gene Expression Data'))
+        html = html.replace("COLUMN_COUNT", str(len(sample_line) - 1))
         
-        # Apply data transformations
-        if options.get('logTransform', False):
-            # Add a small value to avoid log(0)
-            df = np.log2(df + 1)
+        # Generate grid content
+        grid_content = "<div></div>"  # Empty top-left cell
         
-        if options.get('normalizeData', True):
-            # Z-score normalization (row-wise)
-            df = (df - df.mean(axis=1).values.reshape(-1, 1)) / df.std(axis=1).values.reshape(-1, 1)
+        # Add column headers
+        for col in sample_line[1:]:
+            grid_content += f'<div class="heatmap-header">{col}</div>'
         
-        # Set up figure dimensions
-        width = options.get('width', 800) / 100
-        height = options.get('height', 600) / 100
+        # Find min and max values for color scaling
+        all_values = [val for row in data_rows for val in row]
+        min_val = min(all_values)
+        max_val = max(all_values)
         
-        # Get color scheme
-        color_scheme = options.get('colorScheme', 'viridis')
+        # Add rows with data
+        for i, gene in enumerate(gene_names):
+            grid_content += f'<div class="heatmap-row-label">{gene}</div>'
+            for val in data_rows[i]:
+                # Normalize value between 0 and 1
+                norm_val = (val - min_val) / (max_val - min_val) if max_val > min_val else 0.5
+                
+                # Generate color (red for high, blue for low)
+                if norm_val > 0.5:
+                    r = 255
+                    g = int(255 * (1 - norm_val) * 2)
+                    b = int(255 * (1 - norm_val) * 2)
+                else:
+                    r = int(255 * norm_val * 2)
+                    g = int(255 * norm_val * 2)
+                    b = 255
+                
+                color = f"rgb({r}, {g}, {b})"
+                grid_content += f'<div class="heatmap-cell" style="background-color: {color};" title="{val}">{val:.1f}</div>'
         
-        # Set distance metric
-        distance_metric = options.get('distanceMetric', 'euclidean')
+        html = html.replace("GRID_CONTENT", grid_content)
         
-        # Set linkage method
-        linkage_method = options.get('linkageMethod', 'complete')
+        # Save HTML to a temporary file
+        temp_html_path = "/tmp/heatmap.html"
+        with open(temp_html_path, "w") as f:
+            f.write(html)
         
-        # Use seaborn's clustermap for a more modern implementation
-        # This handles the clustering and visualization in one step
-        g = sns.clustermap(
-            df,
-            figsize=(width, height),
-            cmap=color_scheme,
-            method=linkage_method,
-            metric=distance_metric,
-            xticklabels=True,
-            yticklabels=True,
-            dendrogram_ratio=(0.15, 0.15),
-            cbar_pos=(0.02, 0.8, 0.05, 0.18),
-            row_cluster=options.get('showDendrograms', True),
-            col_cluster=options.get('showDendrograms', True)
-        )
-        
-        # Set font size
-        font_size = options.get('fontSize', 12)
-        plt.rcParams.update({'font.size': font_size})
-        
-        # Rotate x-axis labels
-        plt.setp(g.ax_heatmap.get_xticklabels(), rotation=45, ha='right')
-        
-        # Set title and labels
-        g.fig.suptitle(options.get('title', 'Cluster Heatmap'), fontsize=font_size + 4)
-        g.fig.text(0.5, 0.01, options.get('subtitle', 'Gene Expression Data'), ha='center', fontsize=font_size + 2)
-        
-        # Add group annotations if requested
-        if options.get('showGroupAnnotations', True):
-            # Create a mapping of unique groups to colors
-            unique_groups = list(set(groups.values()))
-            group_colors = plt.cm.tab10(np.linspace(0, 1, len(unique_groups)))
-            group_color_map = {group: color for group, color in zip(unique_groups, group_colors)}
+        # Convert HTML to PNG using wkhtmltoimage if available, otherwise return HTML
+        try:
+            # Check if wkhtmltoimage is installed
+            subprocess.run(["which", "wkhtmltoimage"], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             
-            # Get the ordered sample names after clustering
-            if options.get('showDendrograms', True):
-                ordered_samples = [df.columns[i] for i in g.dendrogram_col.reordered_ind]
-            else:
-                ordered_samples = df.columns
+            # Convert HTML to PNG
+            png_path = "/tmp/heatmap.png"
+            subprocess.run(["wkhtmltoimage", "--quality", "90", temp_html_path, png_path], check=True)
             
-            # Create a color array for the group bar
-            group_colors_array = np.array([group_color_map[groups[sample]] for sample in ordered_samples])
+            # Read PNG file
+            with open(png_path, "rb") as f:
+                png_data = f.read()
             
-            # Reshape for imshow
-            group_colors_array = group_colors_array.reshape(1, -1, 4)
+            # Encode to base64
+            plot_data = base64.b64encode(png_data).decode('utf-8')
             
-            # Create a new axis for the group bar
-            ax_group = g.fig.add_axes([
-                g.ax_heatmap.get_position().x0,
-                g.ax_heatmap.get_position().y1 + 0.01,
-                g.ax_heatmap.get_position().width,
-                0.05
-            ])
+            # Clean up
+            os.remove(temp_html_path)
+            os.remove(png_path)
             
-            # Plot the group bar
-            ax_group.imshow(group_colors_array, aspect='auto')
-            ax_group.set_xticks([])
-            ax_group.set_yticks([])
+            return {
+                'plot': plot_data,
+                'success': True
+            }
+        except:
+            # If wkhtmltoimage is not available, return HTML
+            with open(temp_html_path, "r") as f:
+                html_content = f.read()
             
-            # Add a legend for groups
-            handles = [plt.Rectangle((0, 0), 1, 1, color=group_color_map[group]) for group in unique_groups]
-            ax_group.legend(handles, unique_groups, loc='upper right', title='Group', bbox_to_anchor=(1.15, 1))
+            # Clean up
+            os.remove(temp_html_path)
+            
+            return {
+                'html': html_content,
+                'success': True
+            }
+    
+    except Exception as e:
+        return {
+            'error': str(e),
+            'success': False
+        }
+
+@app.route('/api/cluster_heatmap', methods=['POST'])
+def cluster_heatmap():
+    try:
+        # Get data and options from request
+        data = request.json.get('data', '')
+        options = request.json.get('options', {})
         
-        # Adjust layout
-        plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+        # Generate the heatmap
+        result = generate_simple_heatmap(data, options)
         
-        # Save plot to a bytes buffer
-        buf = io.BytesIO()
-        plt.savefig(buf, format='png', dpi=100, bbox_inches='tight')
-        buf.seek(0)
-        
-        # Encode the image to base64
-        plot_data = base64.b64encode(buf.getvalue()).decode('utf-8')
-        
-        plt.close()
-        
-        return jsonify({
-            'plot': plot_data,
-            'success': True
-        })
+        return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e), 'success': False})
 
@@ -159,13 +192,6 @@ def cluster_heatmap():
 @app.route('/api/plot', methods=['POST'])
 def plot():
     try:
-        # Import packages compatible with Python 3.12
-        import matplotlib
-        matplotlib.use('Agg')
-        import matplotlib.pyplot as plt
-        import numpy as np
-        import pandas as pd
-        
         data = request.json.get('data', '')
         options = request.json.get('options', {})
         
@@ -183,40 +209,164 @@ def plot():
                 x_values.append(row[0])
                 y_values.append(float(row[1]))
         
-        # Create plot
-        plt.figure(figsize=(10, 6))
+        # Generate HTML for a bar chart
+        html = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                .chart-container {
+                    width: 800px;
+                    height: 500px;
+                    margin: 0 auto;
+                    padding: 20px;
+                    font-family: Arial, sans-serif;
+                }
+                .bar-chart {
+                    display: flex;
+                    align-items: flex-end;
+                    height: 400px;
+                    border-left: 2px solid #333;
+                    border-bottom: 2px solid #333;
+                    padding: 20px;
+                }
+                .bar {
+                    margin: 0 10px;
+                    width: 40px;
+                    background-color: BAR_COLOR;
+                    display: flex;
+                    justify-content: center;
+                    align-items: flex-start;
+                    color: white;
+                    font-weight: bold;
+                    padding-top: 5px;
+                }
+                .x-label {
+                    text-align: center;
+                    margin-top: 10px;
+                    font-size: 12px;
+                    transform: rotate(ROTATION_DEGdeg);
+                }
+                .chart-title {
+                    text-align: center;
+                    font-size: 18px;
+                    font-weight: bold;
+                    margin-bottom: 20px;
+                }
+                .y-axis {
+                    position: absolute;
+                    left: 20px;
+                    height: 400px;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: space-between;
+                }
+                .y-tick {
+                    font-size: 12px;
+                }
+                .x-axis-label {
+                    text-align: center;
+                    margin-top: 30px;
+                    font-weight: bold;
+                }
+                .y-axis-label {
+                    position: absolute;
+                    left: -40px;
+                    top: 200px;
+                    transform: rotate(-90deg);
+                    font-weight: bold;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="chart-container">
+                <div class="chart-title">CHART_TITLE</div>
+                <div style="position: relative;">
+                    <div class="y-axis-label">Y_AXIS_LABEL</div>
+                    <div class="y-axis">
+                        Y_TICKS
+                    </div>
+                    <div class="bar-chart">
+                        BAR_ELEMENTS
+                    </div>
+                </div>
+                <div class="x-axis-label">X_AXIS_LABEL</div>
+            </div>
+        </body>
+        </html>
+        """
         
-        # Set colors
-        color = options.get('barColor', '#4CAF50')
+        # Find max value for scaling
+        max_val = max(y_values) if y_values else 0
         
-        # Create bar chart
-        plt.bar(x_values, y_values, color=color)
+        # Generate bars
+        bar_elements = ""
+        for i, (x, y) in enumerate(zip(x_values, y_values)):
+            height_percent = (y / max_val * 100) if max_val > 0 else 0
+            bar_elements += f"""
+            <div style="text-align: center;">
+                <div class="bar" style="height: {height_percent}%;">{y}</div>
+                <div class="x-label">{x}</div>
+            </div>
+            """
         
-        # Set labels and title
-        plt.xlabel(options.get('xAxisLabel', 'X Axis'))
-        plt.ylabel(options.get('yAxisLabel', 'Y Axis'))
-        plt.title(options.get('title', 'Bar Chart'))
+        # Generate Y-axis ticks
+        y_ticks = ""
+        num_ticks = 5
+        for i in range(num_ticks):
+            tick_value = max_val * (num_ticks - i - 1) / (num_ticks - 1)
+            y_ticks += f'<div class="y-tick">{tick_value:.1f}</div>'
         
-        # Rotate x-axis labels if needed
-        plt.xticks(rotation=options.get('xAxisRotation', 0))
+        # Replace placeholders
+        html = html.replace("BAR_ELEMENTS", bar_elements)
+        html = html.replace("CHART_TITLE", options.get('title', 'Bar Chart'))
+        html = html.replace("X_AXIS_LABEL", options.get('xAxisLabel', 'X Axis'))
+        html = html.replace("Y_AXIS_LABEL", options.get('yAxisLabel', 'Y Axis'))
+        html = html.replace("Y_TICKS", y_ticks)
+        html = html.replace("BAR_COLOR", options.get('barColor', '#4CAF50'))
+        html = html.replace("ROTATION_DEG", str(options.get('xAxisRotation', 0)))
         
-        # Adjust layout
-        plt.tight_layout()
+        # Save HTML to a temporary file
+        temp_html_path = "/tmp/barchart.html"
+        with open(temp_html_path, "w") as f:
+            f.write(html)
         
-        # Save plot to a bytes buffer
-        buf = io.BytesIO()
-        plt.savefig(buf, format='png')
-        buf.seek(0)
-        
-        # Encode the image to base64
-        plot_data = base64.b64encode(buf.getvalue()).decode('utf-8')
-        
-        plt.close()
-        
-        return jsonify({
-            'plot': plot_data,
-            'success': True
-        })
+        # Convert HTML to PNG using wkhtmltoimage if available, otherwise return HTML
+        try:
+            # Check if wkhtmltoimage is installed
+            subprocess.run(["which", "wkhtmltoimage"], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            
+            # Convert HTML to PNG
+            png_path = "/tmp/barchart.png"
+            subprocess.run(["wkhtmltoimage", "--quality", "90", temp_html_path, png_path], check=True)
+            
+            # Read PNG file
+            with open(png_path, "rb") as f:
+                png_data = f.read()
+            
+            # Encode to base64
+            plot_data = base64.b64encode(png_data).decode('utf-8')
+            
+            # Clean up
+            os.remove(temp_html_path)
+            os.remove(png_path)
+            
+            return jsonify({
+                'plot': plot_data,
+                'success': True
+            })
+        except:
+            # If wkhtmltoimage is not available, return HTML
+            with open(temp_html_path, "r") as f:
+                html_content = f.read()
+            
+            # Clean up
+            os.remove(temp_html_path)
+            
+            return jsonify({
+                'html': html_content,
+                'success': True
+            })
     except Exception as e:
         return jsonify({
             'error': str(e),
@@ -225,7 +375,11 @@ def plot():
 
 @app.route('/', methods=['GET'])
 def health_check():
-    return jsonify({"status": "API is running", "python_version": sys.version})
+    return jsonify({
+        "status": "API is running", 
+        "python_version": sys.version,
+        "dependencies": "No external data science libraries required"
+    })
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
