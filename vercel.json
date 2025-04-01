@@ -1,11 +1,14 @@
 {
+  "env": {
+    "SETUPTOOLS_USE_DISTUTILS": "stdlib"
+  },
   "version": 2,
   "builds": [
     {
       "src": "api/index.py",
       "use": "@vercel/python",
       "config": {
-        "pythonVersion": "3.11"
+        "pythonVersion": "3.12"
       }
     },
     {
