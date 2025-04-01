@@ -1,66 +1,79 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
 import io
 import base64
 import json
 import os
 import sys
-
-# Import scipy, scikit-learn, and seaborn directly in the file
-# instead of relying on requirements.txt for Vercel deployment
-try:
-    import scipy
-    import scipy.cluster.hierarchy as sch
-    from scipy.spatial.distance import pdist
-    import seaborn as sns
-except ImportError:
-    # Install packages if they're not available
-    import subprocess
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "scipy==1.10.1", "scikit-learn==1.2.2", "seaborn==0.12.2"])
-    import scipy
-    import scipy.cluster.hierarchy as sch
-    from scipy.spatial.distance import pdist
-    import seaborn as sns
+import subprocess
 
 app = Flask(__name__)
 CORS(app)
 
-def parse_data(data_str):
-    """Parse tab-delimited data string into a pandas DataFrame."""
-    lines = data_str.strip().split('\n')
-    
-    # Extract group and sample names
-    group_line = lines[0].split('\t')
-    sample_line = lines[1].split('\t')
-    
-    # Extract data rows
-    data_rows = []
-    gene_names = []
-    for i in range(2, len(lines)):
-        row = lines[i].split('\t')
-        gene_names.append(row[0])
-        data_rows.append([float(x) for x in row[1:]])
-    
-    # Create DataFrame
-    df = pd.DataFrame(data_rows, index=gene_names, columns=sample_line[1:])
-    
-    # Create group mapping
-    groups = {}
-    for i in range(1, len(group_line)):
-        groups[sample_line[i]] = group_line[i]
-    
-    return df, groups
-
-def generate_cluster_heatmap(data_str, options):
-    """Generate a cluster heatmap with dendrograms."""
+# Function to install packages if they're not available
+def ensure_packages():
     try:
+        # Try importing required packages
+        import matplotlib
+        import numpy
+        import pandas
+        import scipy
+        import seaborn
+        print("All required packages are already installed")
+    except ImportError as e:
+        print(f"Installing missing packages: {str(e)}")
+        # Install packages if they're not available
+        subprocess.check_call([sys.executable, "-m", "pip", "install", 
+                              "matplotlib==3.7.2", 
+                              "numpy==1.24.3", 
+                              "pandas==1.5.3",
+                              "scipy==1.10.1", 
+                              "scikit-learn==1.2.2", 
+                              "seaborn==0.12.2"])
+        print("Packages installed successfully")
+
+@app.route('/api/cluster_heatmap', methods=['POST'])
+def cluster_heatmap():
+    try:
+        # Ensure all required packages are installed
+        ensure_packages()
+        
+        # Now import the packages after ensuring they're installed
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+        import numpy as np
+        import pandas as pd
+        import matplotlib.gridspec as gridspec
+        from scipy.cluster.hierarchy import linkage, dendrogram
+        from scipy.spatial.distance import pdist
+        
+        # Get data and options from request
+        data = request.json.get('data', '')
+        options = request.json.get('options', {})
+        
         # Parse data
-        df, groups = parse_data(data_str)
+        lines = data.strip().split('\n')
+        
+        # Extract group and sample names
+        group_line = lines[0].split('\t')
+        sample_line = lines[1].split('\t')
+        
+        # Extract data rows
+        data_rows = []
+        gene_names = []
+        for i in range(2, len(lines)):
+            row = lines[i].split('\t')
+            gene_names.append(row[0])
+            data_rows.append([float(x) for x in row[1:]])
+        
+        # Create DataFrame
+        df = pd.DataFrame(data_rows, index=gene_names, columns=sample_line[1:])
+        
+        # Create group mapping
+        groups = {}
+        for i in range(1, len(group_line)):
+            groups[sample_line[i]] = group_line[i]
         
         # Apply data transformations
         if options.get('logTransform', False):
@@ -97,7 +110,7 @@ def generate_cluster_heatmap(data_str, options):
         
         if show_dendrograms:
             # Create grid with space for dendrograms
-            gs = matplotlib.gridspec.GridSpec(2, 2, width_ratios=[0.15, 0.85], height_ratios=[0.15, 0.85])
+            gs = gridspec.GridSpec(2, 2, width_ratios=[0.15, 0.85], height_ratios=[0.15, 0.85])
             
             # Dendrogram for columns (samples)
             ax_col_dendrogram = fig.add_subplot(gs[0, 1])
@@ -113,7 +126,7 @@ def generate_cluster_heatmap(data_str, options):
             ax_empty.axis('off')
         else:
             # Just the heatmap without dendrograms
-            gs = matplotlib.gridspec.GridSpec(1, 1)
+            gs = gridspec.GridSpec(1, 1)
             ax_heatmap = fig.add_subplot(gs[0, 0])
         
         # Set distance metric
@@ -123,13 +136,13 @@ def generate_cluster_heatmap(data_str, options):
         linkage_method = options.get('linkageMethod', 'complete')
         
         # Compute linkage for rows (genes)
-        row_linkage = sch.linkage(
+        row_linkage = linkage(
             pdist(df.values, metric=distance_metric),
             method=linkage_method
         )
         
         # Compute linkage for columns (samples)
-        col_linkage = sch.linkage(
+        col_linkage = linkage(
             pdist(df.values.T, metric=distance_metric),
             method=linkage_method
         )
@@ -150,14 +163,14 @@ def generate_cluster_heatmap(data_str, options):
         
         if show_dendrograms:
             # Plot dendrograms
-            row_dendrogram = sch.dendrogram(
+            row_dendrogram = dendrogram(
                 row_linkage,
                 orientation='left',
                 ax=ax_row_dendrogram,
                 no_labels=True
             )
             
-            col_dendrogram = sch.dendrogram(
+            col_dendrogram = dendrogram(
                 col_linkage,
                 ax=ax_col_dendrogram,
                 no_labels=True
@@ -250,28 +263,10 @@ def generate_cluster_heatmap(data_str, options):
         
         plt.close(fig)
         
-        return {
+        return jsonify({
             'plot': plot_data,
             'success': True
-        }
-    
-    except Exception as e:
-        return {
-            'error': str(e),
-            'success': False
-        }
-
-@app.route('/api/cluster_heatmap', methods=['POST'])
-def cluster_heatmap():
-    try:
-        # Get data and options from request
-        data = request.json.get('data', '')
-        options = request.json.get('options', {})
-        
-        # Generate the heatmap
-        result = generate_cluster_heatmap(data, options)
-        
-        return jsonify(result)
+        })
     except Exception as e:
         return jsonify({'error': str(e), 'success': False})
 
@@ -279,6 +274,16 @@ def cluster_heatmap():
 @app.route('/api/plot', methods=['POST'])
 def plot():
     try:
+        # Ensure all required packages are installed
+        ensure_packages()
+        
+        # Now import the packages after ensuring they're installed
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+        import numpy as np
+        import pandas as pd
+        
         data = request.json.get('data', '')
         options = request.json.get('options', {})
         
@@ -335,6 +340,10 @@ def plot():
             'error': str(e),
             'success': False
         })
+
+@app.route('/', methods=['GET'])
+def health_check():
+    return jsonify({"status": "API is running"})
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
