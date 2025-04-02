@@ -1,26 +1,24 @@
+# vercel.json
 {
   "version": 2,
   "builds": [
     {
-      "src": "api/index.py",
-      "use": "@vercel/python"
-    },
-    {
-      "src": "package.json",
-      "use": "@vercel/static-build",
+      "src": "app.py",
+      "use": "@vercel/python",
       "config": {
-        "distDir": "build"
+        "maxLambdaSize": "100mb",
+        "runtime": "python3.12"
       }
     }
   ],
   "routes": [
     {
-      "src": "/api/(.*)",
-      "dest": "api/index.py"
+      "src": "/static/(.*)",
+      "dest": "/static/$1"
     },
     {
       "src": "/(.*)",
-      "dest": "/$1"
+      "dest": "app.py"
     }
   ]
 }
