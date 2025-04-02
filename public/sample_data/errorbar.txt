@@ -1,6 +1,0 @@
-group value
-Ctrl 4.2
-Ctrl 11.5
-Ctrl 7.3
-Ctrl 5.8
-Ctrl 6.4

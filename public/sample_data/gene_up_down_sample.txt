@@ -1,4 +1,0 @@
-// Sample data for biological graph types
-// Format: gene name and log2 fold change
-miRNAs	miR-1	miR-2	miR-3	miR-4	miR-5	miR-6
-log2FC	3.3	2.5	2.3	-2.2	-3.4	-3.8
