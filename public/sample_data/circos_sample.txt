@@ -1,0 +1,13 @@
+// Sample data for circos plot visualization
+// Format: Source, Target, Value
+Source	Target	Value
+Gene1	Gene2	5
+Gene1	Gene3	3
+Gene2	Gene4	2
+Gene3	Gene5	4
+Gene4	Gene1	1
+Gene5	Gene2	3
+Gene2	Gene3	2
+Gene4	Gene5	3
+Gene3	Gene1	2
+Gene5	Gene4	1
