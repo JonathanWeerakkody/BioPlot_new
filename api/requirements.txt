@@ -1,3 +1,13 @@
-Flask==2.0.1
-Flask-Cors==3.0.10
-gunicorn==20.1.0
+# requirements.txt
+Flask>=2.3,<3.0 # Use a recent stable Flask version range
+pandas>=1.5,<2.3 # Use a recent stable Pandas version range
+plotly>=5.10,<6.0 # Use a recent stable Plotly version range
+kaleido>=0.2.1,<0.3.0 # Required for Plotly static image export (check compatibility)
+gunicorn>=20.1,<22.0 # WSGI server for Vercel
+openpyxl>=3.0,<3.2 # For reading .xlsx files
+numpy>=1.22,<1.27 # Often a dependency, good to specify
+requests # If you add external API calls later
+
+# Remove matplotlib and seaborn if purely switching to Plotly
+# matplotlib>=3.5
+# seaborn>=0.11
